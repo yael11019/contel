@@ -9,9 +9,13 @@
           <div class="modal-body">
             <div class="categories mt-4">
                 <ul class="row list-unstyled text-center">
-                    <li v-for="category in subCategories" :key="category.id" class="col-4 col-md-3 category-item">
+                    <li 
+                      v-for="category in subCategories" 
+                      :key="category.id" 
+                      class="col-4 col-md-3 category-item"
+                      @click="pushToNextLevel(category)"  
+                    >
                       <div class="circle">
-                          
                       </div>
                       <p class="category-name">{{ category }}</p>
                     </li>
@@ -25,6 +29,9 @@
   
   <script setup>
   import { defineProps, defineEmits, onMounted } from 'vue';
+  import { useRouter } from "vue-router";
+
+  const router = useRouter();
   
   onMounted(() => {
     console.log('ModalComponent mounted', props.isVisible);
@@ -49,6 +56,10 @@
   
   // Emitir evento para cerrar el modal
   const emit = defineEmits(['update:showModal']);
+
+  const pushToNextLevel = (category) => {
+    router.push(`/categorias/${category}`);
+  };
   
   const closeModal = () => {
     emit('update:showModal', false); // Emitir el cambio al componente padre

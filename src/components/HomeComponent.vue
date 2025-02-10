@@ -1,7 +1,8 @@
 <template>
   <div class="container">
     <!-- Modal -->
-    <ModalComponent v-if="showModal && subCategories.length > 0" 
+    <ModalComponent 
+      v-if="showModal && subCategories.length > 0" 
       @update:showModal="showModal = $event" 
       :isVisible="showModal"  
       :name="categoryName"
@@ -41,12 +42,18 @@
     <!-- Categorías -->
     <div class="categories mt-4">
       <ul class="row list-unstyled text-center">
-        <li v-for="category in categoriesItems" :key="category.id" class="col-3 category-item" @click="showModalAction(category)">
+        <li 
+          v-for="category in categoriesItems" 
+          :key="category.id" 
+          class="col-3 category-item" 
+          @click="showModalAction(category)"
+          style="cursor: pointer;"
+        >
           <div class="circle">
             <span v-html="category.icon"></span>
           </div>
           <p class="category-name">{{ category.name }}</p>
-        </li>
+        </li> 
       </ul>
     </div>
 
@@ -70,6 +77,7 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref, onMounted } from 'vue';
 import { categories } from '../store/categoriesInfo.js';
@@ -77,6 +85,9 @@ import comercio1 from '@/assets/comercio1.png';
 import comercio2 from '@/assets/comercio2.png';
 import comercio3 from '@/assets/comercio3.jpg';
 import ModalComponent from './ModalComponent.vue';
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const showModal = ref(false);
 
@@ -88,11 +99,17 @@ const subCategories = ref([]);
   return categories.value.filter(category => category.subcategories.length > 0);
 });*/
 
+
 const showModalAction = (category) => {
-  showModal.value = true;
-  categoryName.value = category.name;
-  subCategories.value = category.subCategories;
-  console.log(subCategories.value);
+  if (category.subCategories && category.subCategories.length > 0) {
+    // Si tiene subcategorías, mostrar el modal
+    subCategories.value = category.subCategories;
+    categoryName.value = category.name;
+    showModal.value = true;
+  } else {
+    // Si NO tiene subcategorías, ir a la ruta directamente
+    router.push(`/categorias/${category.name}`);
+  }
 };
 
 const comercios = [
@@ -132,6 +149,10 @@ onMounted(() => {
 
 .categories {
   align-items: center;
+}
+
+.category-name {
+  color: red;
 }
 
 .category-item {
