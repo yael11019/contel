@@ -152,7 +152,7 @@ onMounted(() => {
 }
 
 .category-name {
-  color: red;
+  color: black;
 }
 
 .category-item {
@@ -167,7 +167,7 @@ onMounted(() => {
 .circle {
   width: 60px;
   height: 60px;
-  background-color: lightgrey;
+  background-color: rgb(78, 189, 78);
   color: white;
   font-weight: bold;
   display: flex;

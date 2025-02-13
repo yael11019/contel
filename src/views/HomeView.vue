@@ -10,11 +10,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, defineProps } from 'vue';
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import MenuComponent from '@/components/MenuComponent.vue';
 import HomeComponent from '@/components/HomeComponent.vue';
 import FooterComponent from '@/components/FooterComponent.vue';
+
+defineProps({
+  categoryName: String,
+})
 
 const isMenuOpen = ref(false);
 

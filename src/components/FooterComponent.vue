@@ -74,7 +74,7 @@
 <style scoped>
 .container {
     display: flex;
-    background-color: lightgrey;
+    background-color: rgb(27, 134, 27);;
     justify-content: space-between;
     padding: 0%;
     width : 100%;
@@ -87,7 +87,7 @@
     margin-left: 10px;
     margin-right: 10px;
     cursor: pointer;
-    color: red;
+    color: white;
 }
 
 .option svg {
@@ -95,6 +95,6 @@
 }
 
 .p {
-    color: red;
+    color: white;
 }
 </style>

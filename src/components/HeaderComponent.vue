@@ -34,7 +34,7 @@ const goToHome = () => {
 
 <style scoped>
 .container {
-    background-color: lightgrey;
+    background-color: rgb(27, 134, 27);;
     justify-content: space-between;
     padding: 0%;
     width : 100%;

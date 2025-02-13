@@ -4,8 +4,9 @@
       v-if="isMenuOpen" class="menu" 
       @closeMenu="toggleMenu"
     />
-    <FirstLevelComponent 
-      :categoryName="categoryName" 
+    <SecondLevelComponent 
+      :merchantName="merchantName" 
+      :categoryName="categoryName"
     />
     <p v-if="isMenuOpen"> Funciona</p>
     <FooterComponent :source="'Home'" />
@@ -16,11 +17,12 @@
   import HeaderComponent from '@/components/HeaderComponent.vue';
   import MenuComponent from '@/components/MenuComponent.vue';
   import FooterComponent from '@/components/FooterComponent.vue';
-  import FirstLevelComponent from '@/components/FirstLevelComponent.vue';
+import SecondLevelComponent from '@/components/SecondLevelComponent.vue';
 
   const isMenuOpen = ref(false);
 
   defineProps({
+    merchantName: String,
     categoryName: String,
   })
   
@@ -60,7 +62,7 @@
   }
 
   .category-name {
-    color: black;
+    color: red;
     margin-top: 10px;
   }
   </style>
