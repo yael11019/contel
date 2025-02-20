@@ -1,15 +1,18 @@
 <template>
+  <div class="app">
     <HeaderComponent @toggleMenu="toggleMenu" />
     <MenuComponent 
       v-if="isMenuOpen" class="menu" 
       @closeMenu="toggleMenu"
     />
-    <SecondLevelComponent 
-      :merchantName="merchantName" 
-      :categoryName="categoryName"
-    />
-    <p v-if="isMenuOpen"> Funciona</p>
-    <FooterComponent :source="'Home'" />
+    <div class="content">
+      <SecondLevelComponent 
+        :merchantName="merchantName" 
+        :categoryName="categoryName"
+      />
+    </div>
+    <FooterComponent :source="'Home'" class="footer" />
+  </div>
   </template>
   
   <script setup>
@@ -36,30 +39,33 @@ import SecondLevelComponent from '@/components/SecondLevelComponent.vue';
   
   
   <style scoped>
-  body, html {
-    height: 100%;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-  }
+ .app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
   
-  main {
-    flex-grow: 1; /* Empuja el footer hacia abajo */
-  }
+.footer {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  background: white;
+  z-index: 1000;
+}
   
-  footer {
-    margin-top: auto;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .home {
-    position: static; /* Cambia de relative a static si sigue dando problemas */
-  }
-  
-  .menu {
-    z-index: 9999;
-  }
+.content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px;
+  box-sizing: border-box;
+}
 
   .category-name {
     color: red;

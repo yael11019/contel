@@ -74,27 +74,33 @@
 <style scoped>
 .container {
     display: flex;
-    background-color: rgb(27, 134, 27);;
-    justify-content: space-between;
-    padding: 0%;
-    width : 100%;
+    background-color: rgb(27, 134, 27);
+    justify-content: space-around; /* Distribuye mejor los elementos */
+    align-items: center; /* Alinea los elementos verticalmente */
+    padding: 10px 0; /* Añade un poco de padding vertical */
+    width: 100vw;  
+    max-width: 100%; 
+    margin: 0;
+    position: relative;
 }
 
 .option {
-    align-items: center;
     display: flex;
     flex-direction: column;
-    margin-left: 10px;
-    margin-right: 10px;
+    align-items: center; /* Asegura que los iconos y textos estén alineados */
+    justify-content: center; /* Asegura que todo esté centrado verticalmente */
     cursor: pointer;
     color: white;
+    text-align: center; /* Centra el texto */
 }
 
 .option svg {
-    margin-top: 5px;
+    margin-bottom: 5px; /* Espacio entre el ícono y el texto */
 }
 
-.p {
-    color: white;
+.option p {
+    margin: 0;
+    font-size: 14px; /* Ajusta el tamaño del texto */
 }
+
 </style>

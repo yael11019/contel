@@ -1,66 +1,70 @@
 <template>
-    <HeaderComponent @toggleMenu="toggleMenu" />
+  <div class="app">
+    <HeaderComponent @toggleMenu="toggleMenu" class="header" />
+    
     <MenuComponent 
       v-if="isMenuOpen" class="menu" 
       @closeMenu="toggleMenu"
     />
-    <FirstLevelComponent 
-      :categoryName="categoryName" 
-    />
-    <p v-if="isMenuOpen"> Funciona</p>
-    <FooterComponent :source="'Home'" />
-  </template>
-  
-  <script setup>
-  import { ref, defineProps } from 'vue';
-  import HeaderComponent from '@/components/HeaderComponent.vue';
-  import MenuComponent from '@/components/MenuComponent.vue';
-  import FooterComponent from '@/components/FooterComponent.vue';
-  import FirstLevelComponent from '@/components/FirstLevelComponent.vue';
+    
+    <div class="content">
+      <FirstLevelComponent :categoryName="categoryName" />
+      <p v-if="isMenuOpen">Funciona</p>
+    </div>
+    
+    <FooterComponent :source="'Home'" class="footer" />
+  </div>
+</template>
 
-  const isMenuOpen = ref(false);
+<script setup>
+import { ref, defineProps } from 'vue';
+import HeaderComponent from '@/components/HeaderComponent.vue';
+import MenuComponent from '@/components/MenuComponent.vue';
+import FooterComponent from '@/components/FooterComponent.vue';
+import FirstLevelComponent from '@/components/FirstLevelComponent.vue';
 
-  defineProps({
-    categoryName: String,
-  })
-  
-  const toggleMenu = () => {
-    isMenuOpen.value = !isMenuOpen.value;
-    console.log("Estado del menú:", isMenuOpen.value); // Verifica si cambia correctamente
-  };
-  </script>
-  
-  
-  
-  
-  <style scoped>
-  body, html {
-    height: 100%;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  main {
-    flex-grow: 1; /* Empuja el footer hacia abajo */
-  }
-  
-  footer {
-    margin-top: auto;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .home {
-    position: static; /* Cambia de relative a static si sigue dando problemas */
-  }
-  
-  .menu {
-    z-index: 9999;
-  }
+const isMenuOpen = ref(false);
 
-  .category-name {
-    color: black;
-    margin-top: 10px;
-  }
-  </style>
+defineProps({
+  categoryName: String,
+});
+
+const toggleMenu = () => {
+  isMenuOpen.value = !isMenuOpen.value;
+  console.log("Estado del menú:", isMenuOpen.value);
+};
+</script>
+
+<style scoped>
+/* 📌 Layout base */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 📌 Header siempre arriba */
+.header {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+/* 📌 Footer siempre abajo */
+.footer {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  background: white;
+  z-index: 1000;
+}
+
+/* 📌 Contenido con scroll */
+.content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px;
+  box-sizing: border-box;
+}
+</style>

@@ -1,12 +1,19 @@
 <template>
-  <HeaderComponent @toggleMenu="toggleMenu" />
-  <MenuComponent 
-    v-if="isMenuOpen" class="menu" 
-    @closeMenu="toggleMenu"
-  />
-  <HomeComponent class="home" />
-  <p v-if="isMenuOpen"> Funciona</p>
-  <FooterComponent :source="'Home'" />
+  <div id="app">
+    <HeaderComponent @toggleMenu="toggleMenu" />
+    <MenuComponent 
+      v-if="isMenuOpen" 
+      class="menu" 
+      @closeMenu="toggleMenu"
+    />
+    
+    <!-- Contenedor principal -->
+    <main class="content">
+      <HomeComponent />
+    </main>
+
+    <FooterComponent :source="'Home'" />
+  </div>
 </template>
 
 <script setup>
@@ -18,42 +25,49 @@ import FooterComponent from '@/components/FooterComponent.vue';
 
 defineProps({
   categoryName: String,
-})
+});
 
 const isMenuOpen = ref(false);
 
 const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value;
-  console.log("Estado del menú:", isMenuOpen.value); // Verifica si cambia correctamente
 };
 </script>
 
-
-
-
-<style scoped>
-body, html {
+<style>
+/* 📌 Elimina los espacios blancos en los lados */
+html, body, #app {
+  width: 100%;
   height: 100%;
   margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Evita scroll horizontal */
+}
+
+/* 📌 Configuración del layout principal */
+#app {
   display: flex;
   flex-direction: column;
-}
-
-main {
-  flex-grow: 1; /* Empuja el footer hacia abajo */
-}
-
-footer {
-  margin-top: auto;
-  width: 100%;
+  min-height: 100vh;
   max-width: 100%;
 }
 
-.home {
-  position: static; /* Cambia de relative a static si sigue dando problemas */
+/* 📌 Permitir que el contenido crezca y evitar que choque con el footer */
+.content {
+  flex-grow: 1;
+  width: 100%; /* Asegura que ocupe todo el ancho */
+  overflow-y: auto; /* Solo el contenido tiene scroll */
+  padding-top: 10px; /* Ajusta según la altura del Header */
+  padding-bottom: 10px; /* Ajusta según la altura del Footer */
+  box-sizing: border-box; /* Evita problemas de tamaño */
 }
 
-.menu {
-  z-index: 9999;
+/* 📌 Asegurar que el Footer esté siempre al final */
+footer {
+  width: 100%;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  background: #fff; /* Asegura que no se sobreponga contenido */
 }
 </style>

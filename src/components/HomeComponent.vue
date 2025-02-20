@@ -139,9 +139,7 @@ onMounted(() => {
 <style scoped>
 .container {
   justify-content: center;
-  height: 100vh;
   background-color: white;
-  margin-top: 10px;
   z-index: 1;
   position: relative; /* IMPORTANTE para que no bloquee el menú */
   overflow: visible; /* Evita que recorte el menú */
@@ -180,6 +178,8 @@ onMounted(() => {
 .carousel-inner {
   display: flex; /* Mantiene las imágenes alineadas */
   align-items: center; /* Centra verticalmente */
+  width: 100vw;  /* Ocupa todo el ancho de la ventana */
+  max-width: 100%; /* Evita que crezca más de la pantalla */
 }
 
 .carousel-item {
@@ -187,7 +187,7 @@ onMounted(() => {
 }
 
 .carousel-img {
-  max-height: 500px; /* Ajusta la altura para mantener el tamaño uniforme */
+  max-height: 300px; /* Ajusta la altura para mantener el tamaño uniforme */
   width: auto; /* Mantiene la proporción original */
   margin: auto; /* Centra la imagen dentro del carrusel */
 }
@@ -212,4 +212,9 @@ onMounted(() => {
 .custom-next:hover {
   cursor: pointer; /* Cambia el cursor a puntero */
 }
+.input-group {
+  width: 50%; /* 🔹 La mitad del ancho del componente padre */
+  margin: 0 auto; /* 🔹 Centrar horizontalmente */
+}
+
 </style>
