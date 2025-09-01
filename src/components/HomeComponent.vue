@@ -155,7 +155,7 @@ onMounted(() => {
 
 .category-item {
   display: flex;
-  flex-direction: column; /* Apila el círculo y el texto */
+  flex-direction: column; 
   align-items: center;
   justify-content: center;
   text-align: center;
