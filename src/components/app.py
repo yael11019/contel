@@ -1,6 +1,7 @@
 import streamlit as st 
 import pandas as pd 
 import matplotlib.pyplot as plt 
+import os
 from io import BytesIO 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
 from reportlab.lib.styles import getSampleStyleSheet 
@@ -15,6 +16,9 @@ st.title("Tipo de elección: Diputación Federal")
 # --- Cargar CSV --- 
 @st.cache_data 
 def load_data(): 
+    # Obtener la ruta del directorio actual
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
     archivos = [
         ("votaciones2018.csv", 2018),
         ("votaciones2021.csv", 2021),
@@ -23,80 +27,380 @@ def load_data():
     dfs = []
     archivos_cargados = []
     
+    # Debug: mostrar rutas que está buscando
+    st.write("🔍 Debug - Buscando archivos en:")
+    st.write(f"Directorio actual: {current_dir}")
+    
     for archivo, año in archivos:
-        try:
-            df = pd.read_csv(archivo, sep="|", encoding="latin-1")
-            
-            # Limpiar nombres de columnas
-            df.columns = df.columns.str.replace('"', '')
-            df.columns = df.columns.str.replace('/', '_')
-            df.columns = df.columns.str.strip()
-            
-            # Función para limpiar texto con caracteres especiales
-            def limpiar_texto(texto):
-                if pd.isna(texto):
+        # Buscar archivo en múltiples ubicaciones posibles
+        rutas_posibles = [
+            archivo,  # Ruta relativa directa
+            os.path.join(current_dir, archivo),  # En el mismo directorio que el script
+            os.path.join(current_dir, "..", archivo),  # Un nivel arriba
+            os.path.join(current_dir, "..", "..", archivo),  # Dos niveles arriba
+            os.path.join("data", archivo),  # En carpeta data
+            os.path.join(current_dir, "data", archivo),  # En carpeta data relativa al script
+        ]
+        
+        archivo_encontrado = None
+        
+        for ruta in rutas_posibles:
+            if os.path.exists(ruta):
+                archivo_encontrado = ruta
+                break
+        
+        if archivo_encontrado:
+            try:
+                st.write(f"📁 Encontrado: {archivo} en {archivo_encontrado}")
+                df = pd.read_csv(archivo_encontrado, sep="|", encoding="latin-1")
+                
+                # Limpiar nombres de columnas
+                df.columns = df.columns.str.replace('"', '')
+                df.columns = df.columns.str.replace('/', '_')
+                df.columns = df.columns.str.strip()
+                
+                # Función para limpiar texto con caracteres especiales
+                def limpiar_texto(texto):
+                    if pd.isna(texto):
+                        return texto
+                    texto = str(texto)
+                    
+                    # Mapeo específico para caracteres problemáticos
+                    replacements = {
+                        'MICHOAC�N': 'MICHOACÁN',
+                        'MICHOACï¿½N': 'MICHOACÁN',
+                        'M�XICO': 'MÉXICO',
+                        'MÉXICOï¿½': 'MÉXICO',
+                        'QUER�TARO': 'QUERÉTARO',
+                        'QUERÉTAROï¿½': 'QUERÉTARO',
+                        'YUCAT�N': 'YUCATÁN',
+                        'YUCATÁNï¿½': 'YUCATÁN',
+                        'LE�N': 'LEÓN',
+                        'LEÓNï¿½': 'LEÓN',
+                        'NUEVO LE�N': 'NUEVO LEÓN',
+                        'SAN LUIS POTOS�': 'SAN LUIS POTOSÍ',
+                        'L�ZARO C�RDENAS': 'LÁZARO CÁRDENAS',
+                        'LÁZAROï¿½CÁRDENASï¿½': 'LÁZARO CÁRDENAS',
+                        'ï¿½': '',
+                        '�': 'Á',
+                    }
+                    
+                    for old, new in replacements.items():
+                        texto = texto.replace(old, new)
+                    
+                    # Si no encuentra coincidencia exacta, buscar palabras clave
+                    if 'MICHOAC' in texto.upper():
+                        return 'MICHOACÁN'
+                    elif 'MEXICO' in texto.upper() and 'NUEVO' not in texto.upper():
+                        return 'MÉXICO'
+                    elif 'QUERETARO' in texto.upper():
+                        return 'QUERÉTARO'
+                    elif 'YUCATAN' in texto.upper():
+                        return 'YUCATÁN'
+                    elif 'LEON' in texto.upper() and 'NUEVO' not in texto.upper():
+                        return 'LEÓN'
+                    
                     return texto
-                texto = str(texto)
                 
-                # Mapeo específico para caracteres problemáticos
-                replacements = {
-                    'MICHOAC�N': 'MICHOACÁN',
-                    'MICHOACï¿½N': 'MICHOACÁN',
-                    'M�XICO': 'MÉXICO',
-                    'MÉXICOï¿½': 'MÉXICO',
-                    'QUER�TARO': 'QUERÉTARO',
-                    'QUERÉTAROï¿½': 'QUERÉTARO',
-                    'YUCAT�N': 'YUCATÁN',
-                    'YUCATÁNï¿½': 'YUCATÁN',
-                    'LE�N': 'LEÓN',
-                    'LEÓNï¿½': 'LEÓN',
-                    'NUEVO LE�N': 'NUEVO LEÓN',
-                    'SAN LUIS POTOS�': 'SAN LUIS POTOSÍ',
-                    'L�ZARO C�RDENAS': 'LÁZARO CÁRDENAS',
-                    'LÁZAROï¿½CÁRDENASï¿½': 'LÁZARO CÁRDENAS',
-                    'ï¿½': '',
-                    '�': 'Á',
-                }
+                # Limpiar columnas de texto importantes
+                if 'NOMBRE_ESTADO' in df.columns:
+                    df['NOMBRE_ESTADO'] = df['NOMBRE_ESTADO'].apply(limpiar_texto)
                 
-                for old, new in replacements.items():
-                    texto = texto.replace(old, new)
+                if 'NOMBRE_DISTRITO' in df.columns:
+                    df['NOMBRE_DISTRITO'] = df['NOMBRE_DISTRITO'].apply(limpiar_texto)
                 
-                # Si no encuentra coincidencia exacta, buscar palabras clave
-                if 'MICHOAC' in texto.upper():
-                    return 'MICHOACÁN'
-                elif 'MEXICO' in texto.upper() and 'NUEVO' not in texto.upper():
-                    return 'MÉXICO'
-                elif 'QUERETARO' in texto.upper():
-                    return 'QUERÉTARO'
-                elif 'YUCATAN' in texto.upper():
-                    return 'YUCATÁN'
-                elif 'LEON' in texto.upper() and 'NUEVO' not in texto.upper():
-                    return 'LEÓN'
-                
-                return texto
-            
-            # Limpiar columnas de texto importantes
-            if 'NOMBRE_ESTADO' in df.columns:
-                df['NOMBRE_ESTADO'] = df['NOMBRE_ESTADO'].apply(limpiar_texto)
-            
-            if 'NOMBRE_DISTRITO' in df.columns:
-                df['NOMBRE_DISTRITO'] = df['NOMBRE_DISTRITO'].apply(limpiar_texto)
-            
-            df["Año"] = año
-            dfs.append(df)
-            archivos_cargados.append(f"✅ {archivo}: {len(df)} registros")
-                
-        except FileNotFoundError:
-            archivos_cargados.append(f"❌ {archivo}: Archivo no encontrado")
-        except Exception as e:
-            archivos_cargados.append(f"❌ {archivo}: Error - {str(e)}")
+                df["Año"] = año
+                dfs.append(df)
+                archivos_cargados.append(f"✅ {archivo}: {len(df)} registros")
+                    
+            except Exception as e:
+                archivos_cargados.append(f"❌ {archivo}: Error al leer - {str(e)}")
+        else:
+            archivos_cargados.append(f"❌ {archivo}: Archivo no encontrado en ninguna ubicación")
+            # Mostrar dónde buscó
+            st.write(f"Rutas buscadas para {archivo}:")
+            for ruta in rutas_posibles:
+                st.write(f"  - {ruta} ({'✅' if os.path.exists(ruta) else '❌'})")
+    
+    # Mostrar resumen de carga
+    st.write("📊 Resumen de carga de archivos:")
+    for status in archivos_cargados:
+        st.write(status)
     
     if dfs:
         combined_df = pd.concat(dfs, ignore_index=True)
+        st.success(f"✅ Datos cargados exitosamente: {len(combined_df)} registros totales")
         return combined_df
     else:
-        st.error("No se pudieron cargar los archivos de datos")
+        st.error("❌ No se pudieron cargar los archivos de datos")
+        
+        # Información adicional para debug
+        st.write("🔧 Información de debug:")
+        st.write(f"- Directorio de trabajo actual: {os.getcwd()}")
+        st.write(f"- Archivos en directorio actual:")
+        try:
+            files = os.listdir(os.getcwd())
+            for file in sorted(files):
+                st.write(f"  - {file}")
+        except Exception as e:
+            st.write(f"  Error listando archivos: {e}")
+        
+        # Opción para subir archivos manualmente
+        st.write("---")
+        st.write("### 📤 Opción alternativa: Subir archivos manualmente")
+        
+        uploaded_files = st.file_uploader(
+            "Sube los archivos CSV de votaciones:",
+            type=['csv'],
+            accept_multiple_files=True,
+            help="Sube los archivos votaciones2018.csv, votaciones2021.csv y votaciones2024.csv"
+        )
+        
+        if uploaded_files:
+            dfs_manual = []
+            for uploaded_file in uploaded_files:
+                try:
+                    # Determinar el año basado en el nombre del archivo
+                    if "2018" in uploaded_file.name:
+                        año = 2018
+                    elif "2021" in uploaded_file.name:
+                        año = 2021
+                    elif "2024" in uploaded_file.name:
+                        año = 2024
+                    else:
+                        st.warning(f"No se pudo determinar el año para {uploaded_file.name}")
+                        continue
+                    
+                    df = pd.read_csv(uploaded_file, sep="|", encoding="latin-1")
+                    
+                    # Limpiar nombres de columnas
+                    df.columns = df.columns.str.replace('"', '')
+                    df.columns = df.columns.str.replace('/', '_')
+                    df.columns = df.columns.str.strip()
+                    
+                    df["Año"] = año
+                    dfs_manual.append(df)
+                    st.success(f"✅ {uploaded_file.name}: {len(df)} registros cargados")
+                    
+                except Exception as e:
+                    st.error(f"❌ Error cargando {uploaded_file.name}: {str(e)}")
+            
+            if dfs_manual:
+                combined_df = pd.concat(dfs_manual, ignore_index=True)
+                st.success(f"✅ Archivos manuales cargados: {len(combined_df)} registros totales")
+                return combined_df
+        
         return pd.DataFrame()
+
+# Cargar datos
+df = load_data() 
+
+if df.empty:
+    st.stop()
+
+# --- Función auxiliar para candidatos independientes ---
+def calcular_candidatos_independientes(df_año):
+    """
+    Calcula votos de candidatos independientes
+    """
+    candidatos_independientes = [
+        "CAND_IND_01", "CAND_IND_02", "CANDIDATO_A_INDEPENDIENTE"
+    ]
+    
+    mapeo_independientes = {
+        "CANDIDATO_A_INDEPENDIENTE": "Candidato Independiente",
+        "CAND_IND_01": "Candidato Independiente 1",
+        "CAND_IND_02": "Candidato Independiente 2"
+    }
+    
+    independientes_resultado = []
+    
+    for independiente in candidatos_independientes:
+        if independiente in df_año.columns:
+            votos = pd.to_numeric(df_año[independiente], errors='coerce').fillna(0).sum()
+            if votos > 0:
+                nombre = mapeo_independientes.get(independiente, independiente)
+                independientes_resultado.append({"Independiente": nombre, "Votos": votos})
+    
+    return independientes_resultado
+
+# --- Configuración de coaliciones agrupadas (incluyendo independientes) ---
+def calcular_coaliciones_agrupadas(df_año, año):
+    """
+    Calcula las coaliciones agrupando votos individuales y coaliciones formales + candidatos independientes
+    """
+    
+    # Función auxiliar para obtener votos de una columna
+    def obtener_votos(columna):
+        return pd.to_numeric(df_año[columna], errors='coerce').fillna(0).sum() if columna in df_año.columns else 0
+    
+    coaliciones_resultado = []
+    
+    if año == 2024:
+        # Coalición PAN-PRI-PRD (2024)
+        votos_oposicion = (
+            obtener_votos("PAN") + obtener_votos("PRI") + obtener_votos("PRD") +
+            obtener_votos("PAN_PRI_PRD") + obtener_votos("PAN_PRI") + 
+            obtener_votos("PAN_PRD") + obtener_votos("PRI_PRD")
+        )
+        if votos_oposicion > 0:
+            coaliciones_resultado.append({"Coalicion": "Coalición PAN-PRI-PRD", "Votos": votos_oposicion})
+        
+        # Coalición MORENA-PT-PVEM (2024)
+        votos_morena_coalition = (
+            obtener_votos("MORENA") + obtener_votos("PT") + obtener_votos("PVEM") +
+            obtener_votos("PVEM_PT_MORENA") + obtener_votos("PVEM_PT") + 
+            obtener_votos("PVEM_MORENA") + obtener_votos("PT_MORENA")
+        )
+        if votos_morena_coalition > 0:
+            coaliciones_resultado.append({"Coalicion": "Coalición MORENA-PT-PVEM", "Votos": votos_morena_coalition})
+        
+        # MC participó solo en 2024
+        votos_mc = obtener_votos("MC") + obtener_votos("MOVIMIENTO CIUDADANO")
+        if votos_mc > 0:
+            coaliciones_resultado.append({"Coalicion": "Movimiento Ciudadano", "Votos": votos_mc})
+    
+    elif año == 2021:
+        # Coalición PAN-PRD-MC (2021)
+        votos_pan_coalition = (
+            obtener_votos("PAN") + obtener_votos("PRD") + obtener_votos("MC") + obtener_votos("MOVIMIENTO CIUDADANO") +
+            obtener_votos("PAN_PRD_MC") + obtener_votos("PAN_PRD") + 
+            obtener_votos("PAN_MC") + obtener_votos("PRD_MC")
+        )
+        if votos_pan_coalition > 0:
+            coaliciones_resultado.append({"Coalicion": "Coalición PAN-PRD-MC", "Votos": votos_pan_coalition})
+        
+        # Coalición PRI-PVEM-NA (2021)
+        votos_pri_coalition = (
+            obtener_votos("PRI") + obtener_votos("PVEM") + obtener_votos("NUEVA ALIANZA") +
+            obtener_votos("PRI_PVEM_NA") + obtener_votos("PRI_PVEM") + 
+            obtener_votos("PRI_NA") + obtener_votos("PVEM_NA")
+        )
+        if votos_pri_coalition > 0:
+            coaliciones_resultado.append({"Coalicion": "Coalición PRI-PVEM-NA", "Votos": votos_pri_coalition})
+        
+        # Coalición MORENA-PT-PES (2021)
+        votos_morena_coalition = (
+            obtener_votos("MORENA") + obtener_votos("PT") + obtener_votos("ENCUENTRO SOCIAL") +
+            obtener_votos("PT_MORENA_PES") + obtener_votos("PT_MORENA") + 
+            obtener_votos("PT_PES") + obtener_votos("MORENA_PES")
+        )
+        if votos_morena_coalition > 0:
+            coaliciones_resultado.append({"Coalicion": "Coalición MORENA-PT-PES", "Votos": votos_morena_coalition})
+    
+    elif año == 2018:
+        # Coalición PAN-PRD-MC (2018)
+        votos_pan_coalition = (
+            obtener_votos("PAN") + obtener_votos("PRD") + obtener_votos("MC") + obtener_votos("MOVIMIENTO CIUDADANO") +
+            obtener_votos("PAN_PRD_MC") + obtener_votos("PAN_PRD") + 
+            obtener_votos("PAN_MC") + obtener_votos("PRD_MC")
+        )
+        if votos_pan_coalition > 0:
+            coaliciones_resultado.append({"Coalicion": "Coalición PAN-PRD-MC", "Votos": votos_pan_coalition})
+        
+        # Coalición PRI-PVEM-NA (2018)
+        votos_pri_coalition = (
+            obtener_votos("PRI") + obtener_votos("PVEM") + obtener_votos("NUEVA ALIANZA") +
+            obtener_votos("PRI_PVEM_NA") + obtener_votos("PRI_PVEM") + 
+            obtener_votos("PRI_NA") + obtener_votos("PVEM_NA")
+        )
+        if votos_pri_coalition > 0:
+            coaliciones_resultado.append({"Coalicion": "Coalición PRI-PVEM-NA", "Votos": votos_pri_coalition})
+        
+        # Coalición MORENA-PT-PES (2018)
+        votos_morena_coalition = (
+            obtener_votos("MORENA") + obtener_votos("PT") + obtener_votos("ENCUENTRO SOCIAL") +
+            obtener_votos("PT_MORENA_PES") + obtener_votos("PT_MORENA") + 
+            obtener_votos("PT_PES") + obtener_votos("MORENA_PES")
+        )
+        if votos_morena_coalition > 0:
+            coaliciones_resultado.append({"Coalicion": "Coalición MORENA-PT-PES", "Votos": votos_morena_coalition})
+    
+    # Agregar candidatos independientes a las coaliciones
+    independientes = calcular_candidatos_independientes(df_año)
+    for independiente in independientes:
+        coaliciones_resultado.append({"Coalicion": independiente["Independiente"], "Votos": independiente["Votos"]})
+    
+    # Convertir a DataFrame
+    if coaliciones_resultado:
+        df_coaliciones = pd.DataFrame(coaliciones_resultado)
+        df_coaliciones = df_coaliciones.sort_values("Votos", ascending=False)
+        return df_coaliciones
+    else:
+        return pd.DataFrame()
+
+def calcular_partidos_individuales(df_año):
+    """
+    Calcula votos de TODOS los partidos individuales + candidatos independientes
+    """
+    partidos_todos = [
+        "PAN", "PRI", "PRD", "PVEM", "PT", "MC", "MOVIMIENTO CIUDADANO", 
+        "NUEVA ALIANZA", "MORENA", "ENCUENTRO SOCIAL"
+    ]
+    
+    partidos_individuales = []
+    
+    # Agregar partidos políticos
+    for partido in partidos_todos:
+        if partido in df_año.columns:
+            votos = pd.to_numeric(df_año[partido], errors='coerce').fillna(0).sum()
+            if votos > 0:
+                # Mapear nombres más legibles
+                nombre_partido = {
+                    "MC": "Movimiento Ciudadano",
+                    "MOVIMIENTO CIUDADANO": "Movimiento Ciudadano",
+                    "NUEVA ALIANZA": "Nueva Alianza",
+                    "ENCUENTRO SOCIAL": "Encuentro Social"
+                }.get(partido, partido)
+                
+                partidos_individuales.append({"Partido": nombre_partido, "Votos": votos})
+    
+    # Agregar candidatos independientes
+    independientes = calcular_candidatos_independientes(df_año)
+    for independiente in independientes:
+        partidos_individuales.append({"Partido": independiente["Independiente"], "Votos": independiente["Votos"]})
+    
+    if partidos_individuales:
+        df_partidos = pd.DataFrame(partidos_individuales)
+        df_partidos = df_partidos.sort_values("Votos", ascending=False)
+        return df_partidos
+    else:
+        return pd.DataFrame()
+
+def calcular_otros_votos(df_año):
+    """
+    Calcula votos nulos y no registrados (sin candidatos independientes)
+    """
+    otros_votos = [
+        "CNR", "CANDIDATO_A_NO_REGISTRADO_A",
+        "VN", "VOTOS NULOS"
+    ]
+    
+    mapeo_otros = {
+        "CNR": "No Registrados",
+        "VN": "Votos Nulos",
+        "CANDIDATO_A_NO_REGISTRADO_A": "No Registrados",
+        "VOTOS NULOS": "Votos Nulos"
+    }
+    
+    otros_resultado = []
+    
+    for otro in otros_votos:
+        if otro in df_año.columns:
+            votos = pd.to_numeric(df_año[otro], errors='coerce').fillna(0).sum()
+            if votos > 0:
+                nombre = mapeo_otros.get(otro, otro)
+                otros_resultado.append({"Otros": nombre, "Votos": votos})
+    
+    if otros_resultado:
+        df_otros = pd.DataFrame(otros_resultado)
+        df_otros = df_otros.sort_values("Votos", ascending=False)
+        return df_otros
+    else:
+        return pd.DataFrame()
+
+# --- Resto del código permanece igual ---
+# [Copiar aquí todo el resto del código desde "# --- Filtros ---" en adelante]
 
 df = load_data() 
 
