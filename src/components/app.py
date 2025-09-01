@@ -28,8 +28,6 @@ def load_data():
     archivos_cargados = []
     
     # Debug: mostrar rutas que está buscando
-    st.write("🔍 Debug - Buscando archivos en:")
-    st.write(f"Directorio actual: {current_dir}")
     
     for archivo, año in archivos:
         # Buscar archivo en múltiples ubicaciones posibles
@@ -51,7 +49,6 @@ def load_data():
         
         if archivo_encontrado:
             try:
-                st.write(f"📁 Encontrado: {archivo} en {archivo_encontrado}")
                 df = pd.read_csv(archivo_encontrado, sep="|", encoding="latin-1")
                 
                 # Limpiar nombres de columnas
@@ -118,26 +115,14 @@ def load_data():
         else:
             archivos_cargados.append(f"❌ {archivo}: Archivo no encontrado en ninguna ubicación")
             # Mostrar dónde buscó
-            st.write(f"Rutas buscadas para {archivo}:")
-            for ruta in rutas_posibles:
-                st.write(f"  - {ruta} ({'✅' if os.path.exists(ruta) else '❌'})")
     
-    # Mostrar resumen de carga
-    st.write("📊 Resumen de carga de archivos:")
-    for status in archivos_cargados:
-        st.write(status)
     
     if dfs:
         combined_df = pd.concat(dfs, ignore_index=True)
-        st.success(f"✅ Datos cargados exitosamente: {len(combined_df)} registros totales")
         return combined_df
     else:
         st.error("❌ No se pudieron cargar los archivos de datos")
         
-        # Información adicional para debug
-        st.write("🔧 Información de debug:")
-        st.write(f"- Directorio de trabajo actual: {os.getcwd()}")
-        st.write(f"- Archivos en directorio actual:")
         try:
             files = os.listdir(os.getcwd())
             for file in sorted(files):
