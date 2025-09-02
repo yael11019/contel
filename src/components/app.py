@@ -142,9 +142,9 @@ def load_data():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     archivos = [
-        ("votaciones2018.csv", 2018),
-        ("votaciones2021.csv", 2021),
-        ("votaciones2024.csv", 2024)
+        ("votaciones2018_con_municipio.csv", 2018),
+        ("votaciones2021_con_municipio.csv", 2021),
+        ("votaciones2024_con_municipio.csv", 2024)
     ]
     dfs = []
     archivos_cargados = []
@@ -502,7 +502,7 @@ def calcular_otros_votos(df_año):
     else:
         return pd.DataFrame()
 
-# --- Filtros con scroll mejorado --- 
+# --- Filtros con jerarquía corregida --- 
 st.sidebar.header("Filtros") 
 
 # Usar NOMBRE_ESTADO como columna principal
@@ -514,9 +514,12 @@ if 'estado_anterior' not in st.session_state:
     st.session_state.estado_anterior = None
 if 'distrito_anterior' not in st.session_state:
     st.session_state.distrito_anterior = None
+if 'municipio_anterior' not in st.session_state:
+    st.session_state.municipio_anterior = None
 if 'seccion_anterior' not in st.session_state:
     st.session_state.seccion_anterior = None
 
+# 1. FILTRO DE ESTADO
 estado_sel = st.sidebar.selectbox("Estado", sorted(estados_unicos)) 
 df_estado = df[df[estado_col] == estado_sel] 
 
@@ -526,28 +529,56 @@ if st.session_state.estado_anterior != estado_sel:
         time.sleep(0.1)
     st.session_state.estado_anterior = estado_sel
 
-# Filtro de distrito
-distritos_con_id = df_estado.apply(lambda row: f"{row['ID_DISTRITO']} - {row['NOMBRE_DISTRITO']}", axis=1).dropna().unique()
-distritos_opciones = ["Todos"] + sorted(distritos_con_id)
-distrito_sel = st.sidebar.selectbox("Distrito", distritos_opciones, index=0)
-
-# Verificar si cambió el distrito
-if st.session_state.distrito_anterior != distrito_sel:
-    if st.session_state.distrito_anterior is not None:
-        time.sleep(0.1)
-    st.session_state.distrito_anterior = distrito_sel
-
-if distrito_sel == "Todos":
-    df_distrito = df_estado
-    distrito_display = "Todos los distritos"
+# 2. FILTRO DE DISTRITO (basado en estado)
+if len(df_estado) > 0:
+    distritos_con_id = df_estado.apply(lambda row: f"{row['ID_DISTRITO']} - {row['NOMBRE_DISTRITO']}", axis=1).dropna().unique()
+    distritos_opciones = ["Todos"] + sorted(distritos_con_id)
+    distrito_sel = st.sidebar.selectbox("Distrito", distritos_opciones, index=0)
+    
+    # Verificar si cambió el distrito
+    if st.session_state.distrito_anterior != distrito_sel:
+        if st.session_state.distrito_anterior is not None:
+            time.sleep(0.1)
+        st.session_state.distrito_anterior = distrito_sel
+    
+    if distrito_sel == "Todos":
+        df_distrito = df_estado
+        distrito_display = "Todos los distritos"
+    else:
+        nombre_distrito = distrito_sel.split(" - ", 1)[1] if " - " in distrito_sel else distrito_sel
+        df_distrito = df_estado[df_estado["NOMBRE_DISTRITO"] == nombre_distrito]
+        distrito_display = distrito_sel
 else:
-    nombre_distrito = distrito_sel.split(" - ", 1)[1] if " - " in distrito_sel else distrito_sel
-    df_distrito = df_estado[df_estado["NOMBRE_DISTRITO"] == nombre_distrito]
-    distrito_display = distrito_sel
+    df_distrito = df_estado
+    distrito_display = "No hay datos disponibles"
+    distrito_sel = "Todos"
 
-# Filtro de sección
-if len(df_distrito) > 0:
-    secciones_unicas = df_distrito["SECCION"].dropna().astype(int).unique()
+# 3. FILTRO DE MUNICIPIO (basado en distrito)
+if len(df_distrito) > 0 and "MUNICIPIO" in df_distrito.columns:
+    municipios_unicos = df_distrito["MUNICIPIO"].dropna().astype(str).unique()
+    municipios_opciones = ["Todos"] + sorted(municipios_unicos)
+    municipio_sel = st.sidebar.selectbox("Municipio", municipios_opciones, index=0)
+    
+    # Verificar si cambió el municipio
+    if st.session_state.municipio_anterior != municipio_sel:
+        if st.session_state.municipio_anterior is not None:
+            time.sleep(0.1)
+        st.session_state.municipio_anterior = municipio_sel
+    
+    if municipio_sel == "Todos":
+        df_municipio = df_distrito
+        municipio_display = "Todos los municipios"
+    else:
+        df_municipio = df_distrito[df_distrito["MUNICIPIO"] == municipio_sel]
+        municipio_display = municipio_sel
+else:
+    df_municipio = df_distrito
+    municipio_display = "No disponible"
+    municipio_sel = "Todos"
+
+# 4. FILTRO DE SECCIÓN (basado en municipio)
+if len(df_municipio) > 0:
+    secciones_unicas = df_municipio["SECCION"].dropna().astype(int).unique()
     secciones_ordenadas = sorted(secciones_unicas)
     secciones_opciones = ["Todas"] + [str(s) for s in secciones_ordenadas]
     
@@ -560,17 +591,27 @@ if len(df_distrito) > 0:
         st.session_state.seccion_anterior = seccion_sel
     
     if seccion_sel == "Todas":
-        df_seccion = df_distrito
+        df_seccion = df_municipio
         seccion_display = "Todas las secciones"
     else:
-        df_seccion = df_distrito[df_distrito["SECCION"].astype(str) == seccion_sel]
+        df_seccion = df_municipio[df_municipio["SECCION"].astype(str) == seccion_sel]
         
         # Obtener tipos de casilla únicos para la sección seleccionada
-        if len(df_seccion) > 0 and "CASILLA" in df_seccion.columns:
-            tipos_casilla = df_seccion["CASILLA"].dropna().unique()
-            if len(tipos_casilla) > 0:
-                tipos_casilla_str = ", ".join(sorted(tipos_casilla))
-                seccion_display = f"Sección {seccion_sel} ({tipos_casilla_str})"
+        if len(df_seccion) > 0:
+            # Buscar columna TIPO_CASILLA o CASILLA
+            tipo_col = None
+            if "TIPO_CASILLA" in df_seccion.columns:
+                tipo_col = "TIPO_CASILLA"
+            elif "CASILLA" in df_seccion.columns:
+                tipo_col = "CASILLA"
+            
+            if tipo_col:
+                tipos_casilla = df_seccion[tipo_col].dropna().unique()
+                if len(tipos_casilla) > 0:
+                    tipos_casilla_str = ", ".join(sorted(tipos_casilla))
+                    seccion_display = f"Sección {seccion_sel} ({tipos_casilla_str})"
+                else:
+                    seccion_display = f"Sección {seccion_sel}"
             else:
                 seccion_display = f"Sección {seccion_sel}"
         else:
@@ -582,8 +623,11 @@ else:
 # Reemplazar desde la línea ~700 (después del título principal) hasta donde empiezan las métricas:
 
 if len(df_seccion) > 0:
-    # Título principal
-    st.header(f"📊 Resultados para {estado_sel} - {distrito_display} - {seccion_display}")
+    # Título principal con jerarquía correcta: Estado - Distrito - Municipio - Sección
+    if municipio_sel == "Todos":
+        st.header(f"📊 Resultados para {estado_sel} - {distrito_display} - {municipio_display} - {seccion_display}")
+    else:
+        st.header(f"📊 Resultados para {estado_sel} - {distrito_display} - {municipio_sel} - {seccion_display}")
     
     # Obtener años disponibles en orden descendente: 2024, 2021, 2018
     años_disponibles = sorted(df_seccion["Año"].unique(), reverse=True)
@@ -826,9 +870,11 @@ if len(df_seccion) > 0:
             # Información general
             story.append(Paragraph(f"<b>Estado:</b> {estado_sel}", styles["Normal"])) 
             story.append(Spacer(1, 0.1*inch))
-            story.append(Paragraph(f"<b>Distritos:</b> {distrito_display}", styles["Normal"])) 
+            story.append(Paragraph(f"<b>Distrito:</b> {distrito_display}", styles["Normal"])) 
             story.append(Spacer(1, 0.1*inch))
-            story.append(Paragraph(f"<b>Secciones:</b> {seccion_display}", styles["Normal"])) 
+            story.append(Paragraph(f"<b>Municipio:</b> {municipio_display}", styles["Normal"])) 
+            story.append(Spacer(1, 0.1*inch))
+            story.append(Paragraph(f"<b>Sección:</b> {seccion_display}", styles["Normal"])) 
             story.append(Spacer(1, 0.3*inch))
             
             # Resultados por año en orden: 2024, 2021, 2018
@@ -941,9 +987,12 @@ if len(df_seccion) > 0:
             buffer.seek(0) 
             return buffer 
         
-        # Generar nombre del archivo
-        archivo_nombre = f"resultados_electorales_completo_{estado_sel}_{distrito_sel.replace('/', '_')}_{seccion_sel}.pdf"
-        
+        # Generar nombre del archivo con jerarquía correcta
+        estado_clean = estado_sel.replace('/', '_').replace(' ', '_')
+        distrito_clean = distrito_sel.replace('/', '_').replace(' ', '_').replace('-', '_')
+        municipio_clean = municipio_sel.replace('/', '_').replace(' ', '_') if municipio_sel != "Todos" else "Todos"
+        archivo_nombre = f"resultados_electorales_{estado_clean}_{distrito_clean}_{municipio_clean}_{seccion_sel}.pdf"
+
         # Botón de descarga directo
         st.download_button(
             label="📥 Descargar PDF Completo",
