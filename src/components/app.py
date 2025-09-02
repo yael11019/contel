@@ -2,16 +2,138 @@ import streamlit as st
 import pandas as pd 
 import matplotlib.pyplot as plt 
 import os
+import streamlit.components.v1
 from io import BytesIO 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
 from reportlab.lib.styles import getSampleStyleSheet 
 from reportlab.lib import colors 
 from reportlab.lib.units import inch
+import time
 
 # --- Configuración --- 
 st.set_page_config(page_title="Sistema de Análisis Electoral", layout="wide") 
-st.title("🗳️ Sistema de Análisis Electoral") 
-st.title("Tipo de elección: Diputación Federal") 
+
+st.markdown("""
+<style>
+    /* Estilos más agresivos para las tablas */
+    .stDataFrame, 
+    .stDataFrame table,
+    .stDataFrame tbody,
+    .stDataFrame thead,
+    .element-container .stDataFrame,
+    div[data-testid="stDataFrame"],
+    div[data-testid="stDataFrame"] table,
+    div[data-testid="stDataFrame"] tbody,
+    div[data-testid="stDataFrame"] thead {
+        font-size: 20px !important;
+        font-family: 'Arial', sans-serif !important;
+    }
+    
+    /* Headers de tablas */
+    .stDataFrame th,
+    .stDataFrame thead th,
+    div[data-testid="stDataFrame"] th,
+    div[data-testid="stDataFrame"] thead th {
+        font-size: 22px !important;
+        font-weight: bold !important;
+        background-color: #f0f0f0 !important;
+    }
+    
+    /* Celdas de tablas */
+    .stDataFrame td,
+    .stDataFrame tbody td,
+    div[data-testid="stDataFrame"] td,
+    div[data-testid="stDataFrame"] tbody td {
+        font-size: 20px !important;
+        padding: 12px !important;
+    }
+    
+    /* Forzar en todos los elementos de tabla */
+    table, table th, table td {
+        font-size: 20px !important;
+    }
+    
+    /* Métricas más grandes */
+    div[data-testid="metric-container"] {
+        font-size: 24px !important;
+    }
+    
+    div[data-testid="metric-container"] > div {
+        font-size: 26px !important;
+    }
+    
+    /* Reducir títulos */
+    h1 { font-size: 2.2rem !important; }
+    h2 { font-size: 1.8rem !important; }
+    h3 { font-size: 1.4rem !important; }
+    h4 { font-size: 1.2rem !important; }
+    
+    /* Tabs más grandes */
+    .stTabs [data-baseweb="tab-list"] button div p {
+        font-size: 18px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Configurar matplotlib para texto más grande en gráficos
+plt.rcParams.update({
+    "font.size": 18,           # Tamaño base más grande
+    "axes.titlesize": 24,      # Título del gráfico
+    "axes.labelsize": 20,      # Etiquetas de ejes
+    "xtick.labelsize": 18,     # Números en eje X
+    "ytick.labelsize": 18,     # Números en eje Y
+    "legend.fontsize": 18,     # Leyenda
+    "figure.titlesize": 26,    # Título de figura
+    "axes.titleweight": "bold" # Títulos en negrita
+})
+
+st.markdown("# 🗳️ Sistema de Análisis Electoral") 
+st.markdown("## Tipo de elección: Diputación Federal")
+
+# --- Función para mostrar tablas grandes ---
+def mostrar_tabla_grande(df, titulo_columnas):
+    """Mostrar tabla con texto más grande usando HTML"""
+    if len(df) == 0:
+        return
+    
+    # Crear HTML personalizado
+    html = f"""
+    <style>
+        .tabla-grande {{
+            font-size: 20px !important;
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }}
+        .tabla-grande th {{
+            font-size: 22px !important;
+            font-weight: bold !important;
+            background-color: #f0f0f0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }}
+        .tabla-grande td {{
+            font-size: 20px !important;
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }}
+        .tabla-grande tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+    </style>
+    <table class="tabla-grande">
+        <thead>
+            <tr>{"".join([f"<th>{col}</th>" for col in titulo_columnas])}</tr>
+        </thead>
+        <tbody>
+            {"".join([f"<tr>{''.join([f'<td>{val}</td>' for val in row])}</tr>" for row in df.values])}
+        </tbody>
+    </table>
+    """
+    
+    st.markdown(html, unsafe_allow_html=True)
 
 # --- Cargar CSV --- 
 @st.cache_data 
@@ -26,8 +148,6 @@ def load_data():
     ]
     dfs = []
     archivos_cargados = []
-    
-    # Debug: mostrar rutas que está buscando
     
     for archivo, año in archivos:
         # Buscar archivo en múltiples ubicaciones posibles
@@ -114,8 +234,6 @@ def load_data():
                 archivos_cargados.append(f"❌ {archivo}: Error al leer - {str(e)}")
         else:
             archivos_cargados.append(f"❌ {archivo}: Archivo no encontrado en ninguna ubicación")
-            # Mostrar dónde buscó
-    
     
     if dfs:
         combined_df = pd.concat(dfs, ignore_index=True)
@@ -384,228 +502,40 @@ def calcular_otros_votos(df_año):
     else:
         return pd.DataFrame()
 
-# --- Resto del código permanece igual ---
-# [Copiar aquí todo el resto del código desde "# --- Filtros ---" en adelante]
-
-df = load_data() 
-
-if df.empty:
-    st.stop()
-
-# --- Función auxiliar para candidatos independientes ---
-def calcular_candidatos_independientes(df_año):
-    """
-    Calcula votos de candidatos independientes
-    """
-    candidatos_independientes = [
-        "CAND_IND_01", "CAND_IND_02", "CANDIDATO_A_INDEPENDIENTE"
-    ]
-    
-    mapeo_independientes = {
-        "CANDIDATO_A_INDEPENDIENTE": "Candidato Independiente",
-        "CAND_IND_01": "Candidato Independiente 1",
-        "CAND_IND_02": "Candidato Independiente 2"
-    }
-    
-    independientes_resultado = []
-    
-    for independiente in candidatos_independientes:
-        if independiente in df_año.columns:
-            votos = pd.to_numeric(df_año[independiente], errors='coerce').fillna(0).sum()
-            if votos > 0:
-                nombre = mapeo_independientes.get(independiente, independiente)
-                independientes_resultado.append({"Independiente": nombre, "Votos": votos})
-    
-    return independientes_resultado
-
-# --- Configuración de coaliciones agrupadas (incluyendo independientes) ---
-def calcular_coaliciones_agrupadas(df_año, año):
-    """
-    Calcula las coaliciones agrupando votos individuales y coaliciones formales + candidatos independientes
-    """
-    
-    # Función auxiliar para obtener votos de una columna
-    def obtener_votos(columna):
-        return pd.to_numeric(df_año[columna], errors='coerce').fillna(0).sum() if columna in df_año.columns else 0
-    
-    coaliciones_resultado = []
-    
-    if año == 2024:
-        # Coalición PAN-PRI-PRD (2024)
-        votos_oposicion = (
-            obtener_votos("PAN") + obtener_votos("PRI") + obtener_votos("PRD") +
-            obtener_votos("PAN_PRI_PRD") + obtener_votos("PAN_PRI") + 
-            obtener_votos("PAN_PRD") + obtener_votos("PRI_PRD")
-        )
-        if votos_oposicion > 0:
-            coaliciones_resultado.append({"Coalicion": "Coalición PAN-PRI-PRD", "Votos": votos_oposicion})
-        
-        # Coalición MORENA-PT-PVEM (2024)
-        votos_morena_coalition = (
-            obtener_votos("MORENA") + obtener_votos("PT") + obtener_votos("PVEM") +
-            obtener_votos("PVEM_PT_MORENA") + obtener_votos("PVEM_PT") + 
-            obtener_votos("PVEM_MORENA") + obtener_votos("PT_MORENA")
-        )
-        if votos_morena_coalition > 0:
-            coaliciones_resultado.append({"Coalicion": "Coalición MORENA-PT-PVEM", "Votos": votos_morena_coalition})
-        
-        # MC participó solo en 2024
-        votos_mc = obtener_votos("MC") + obtener_votos("MOVIMIENTO CIUDADANO")
-        if votos_mc > 0:
-            coaliciones_resultado.append({"Coalicion": "Movimiento Ciudadano", "Votos": votos_mc})
-    
-    elif año == 2021:
-        # Coalición PAN-PRD-MC (2021)
-        votos_pan_coalition = (
-            obtener_votos("PAN") + obtener_votos("PRD") + obtener_votos("MC") + obtener_votos("MOVIMIENTO CIUDADANO") +
-            obtener_votos("PAN_PRD_MC") + obtener_votos("PAN_PRD") + 
-            obtener_votos("PAN_MC") + obtener_votos("PRD_MC")
-        )
-        if votos_pan_coalition > 0:
-            coaliciones_resultado.append({"Coalicion": "Coalición PAN-PRD-MC", "Votos": votos_pan_coalition})
-        
-        # Coalición PRI-PVEM-NA (2021)
-        votos_pri_coalition = (
-            obtener_votos("PRI") + obtener_votos("PVEM") + obtener_votos("NUEVA ALIANZA") +
-            obtener_votos("PRI_PVEM_NA") + obtener_votos("PRI_PVEM") + 
-            obtener_votos("PRI_NA") + obtener_votos("PVEM_NA")
-        )
-        if votos_pri_coalition > 0:
-            coaliciones_resultado.append({"Coalicion": "Coalición PRI-PVEM-NA", "Votos": votos_pri_coalition})
-        
-        # Coalición MORENA-PT-PES (2021)
-        votos_morena_coalition = (
-            obtener_votos("MORENA") + obtener_votos("PT") + obtener_votos("ENCUENTRO SOCIAL") +
-            obtener_votos("PT_MORENA_PES") + obtener_votos("PT_MORENA") + 
-            obtener_votos("PT_PES") + obtener_votos("MORENA_PES")
-        )
-        if votos_morena_coalition > 0:
-            coaliciones_resultado.append({"Coalicion": "Coalición MORENA-PT-PES", "Votos": votos_morena_coalition})
-    
-    elif año == 2018:
-        # Coalición PAN-PRD-MC (2018)
-        votos_pan_coalition = (
-            obtener_votos("PAN") + obtener_votos("PRD") + obtener_votos("MC") + obtener_votos("MOVIMIENTO CIUDADANO") +
-            obtener_votos("PAN_PRD_MC") + obtener_votos("PAN_PRD") + 
-            obtener_votos("PAN_MC") + obtener_votos("PRD_MC")
-        )
-        if votos_pan_coalition > 0:
-            coaliciones_resultado.append({"Coalicion": "Coalición PAN-PRD-MC", "Votos": votos_pan_coalition})
-        
-        # Coalición PRI-PVEM-NA (2018)
-        votos_pri_coalition = (
-            obtener_votos("PRI") + obtener_votos("PVEM") + obtener_votos("NUEVA ALIANZA") +
-            obtener_votos("PRI_PVEM_NA") + obtener_votos("PRI_PVEM") + 
-            obtener_votos("PRI_NA") + obtener_votos("PVEM_NA")
-        )
-        if votos_pri_coalition > 0:
-            coaliciones_resultado.append({"Coalicion": "Coalición PRI-PVEM-NA", "Votos": votos_pri_coalition})
-        
-        # Coalición MORENA-PT-PES (2018)
-        votos_morena_coalition = (
-            obtener_votos("MORENA") + obtener_votos("PT") + obtener_votos("ENCUENTRO SOCIAL") +
-            obtener_votos("PT_MORENA_PES") + obtener_votos("PT_MORENA") + 
-            obtener_votos("PT_PES") + obtener_votos("MORENA_PES")
-        )
-        if votos_morena_coalition > 0:
-            coaliciones_resultado.append({"Coalicion": "Coalición MORENA-PT-PES", "Votos": votos_morena_coalition})
-    
-    # Agregar candidatos independientes a las coaliciones
-    independientes = calcular_candidatos_independientes(df_año)
-    for independiente in independientes:
-        coaliciones_resultado.append({"Coalicion": independiente["Independiente"], "Votos": independiente["Votos"]})
-    
-    # Convertir a DataFrame
-    if coaliciones_resultado:
-        df_coaliciones = pd.DataFrame(coaliciones_resultado)
-        df_coaliciones = df_coaliciones.sort_values("Votos", ascending=False)
-        return df_coaliciones
-    else:
-        return pd.DataFrame()
-
-def calcular_partidos_individuales(df_año):
-    """
-    Calcula votos de TODOS los partidos individuales + candidatos independientes
-    """
-    partidos_todos = [
-        "PAN", "PRI", "PRD", "PVEM", "PT", "MC", "MOVIMIENTO CIUDADANO", 
-        "NUEVA ALIANZA", "MORENA", "ENCUENTRO SOCIAL"
-    ]
-    
-    partidos_individuales = []
-    
-    # Agregar partidos políticos
-    for partido in partidos_todos:
-        if partido in df_año.columns:
-            votos = pd.to_numeric(df_año[partido], errors='coerce').fillna(0).sum()
-            if votos > 0:
-                # Mapear nombres más legibles
-                nombre_partido = {
-                    "MC": "Movimiento Ciudadano",
-                    "MOVIMIENTO CIUDADANO": "Movimiento Ciudadano",
-                    "NUEVA ALIANZA": "Nueva Alianza",
-                    "ENCUENTRO SOCIAL": "Encuentro Social"
-                }.get(partido, partido)
-                
-                partidos_individuales.append({"Partido": nombre_partido, "Votos": votos})
-    
-    # Agregar candidatos independientes
-    independientes = calcular_candidatos_independientes(df_año)
-    for independiente in independientes:
-        partidos_individuales.append({"Partido": independiente["Independiente"], "Votos": independiente["Votos"]})
-    
-    if partidos_individuales:
-        df_partidos = pd.DataFrame(partidos_individuales)
-        df_partidos = df_partidos.sort_values("Votos", ascending=False)
-        return df_partidos
-    else:
-        return pd.DataFrame()
-
-def calcular_otros_votos(df_año):
-    """
-    Calcula votos nulos y no registrados (sin candidatos independientes)
-    """
-    otros_votos = [
-        "CNR", "CANDIDATO_A_NO_REGISTRADO_A",
-        "VN", "VOTOS NULOS"
-    ]
-    
-    mapeo_otros = {
-        "CNR": "No Registrados",
-        "VN": "Votos Nulos",
-        "CANDIDATO_A_NO_REGISTRADO_A": "No Registrados",
-        "VOTOS NULOS": "Votos Nulos"
-    }
-    
-    otros_resultado = []
-    
-    for otro in otros_votos:
-        if otro in df_año.columns:
-            votos = pd.to_numeric(df_año[otro], errors='coerce').fillna(0).sum()
-            if votos > 0:
-                nombre = mapeo_otros.get(otro, otro)
-                otros_resultado.append({"Otros": nombre, "Votos": votos})
-    
-    if otros_resultado:
-        df_otros = pd.DataFrame(otros_resultado)
-        df_otros = df_otros.sort_values("Votos", ascending=False)
-        return df_otros
-    else:
-        return pd.DataFrame()
-
-# --- Filtros --- 
+# --- Filtros con scroll mejorado --- 
 st.sidebar.header("Filtros") 
 
 # Usar NOMBRE_ESTADO como columna principal
 estado_col = "NOMBRE_ESTADO"
 estados_unicos = df[estado_col].dropna().astype(str).unique()
+
+# Inicializar session state para los filtros
+if 'estado_anterior' not in st.session_state:
+    st.session_state.estado_anterior = None
+if 'distrito_anterior' not in st.session_state:
+    st.session_state.distrito_anterior = None
+if 'seccion_anterior' not in st.session_state:
+    st.session_state.seccion_anterior = None
+
 estado_sel = st.sidebar.selectbox("Estado", sorted(estados_unicos)) 
 df_estado = df[df[estado_col] == estado_sel] 
+
+# Verificar si cambió el estado
+if st.session_state.estado_anterior != estado_sel:
+    if st.session_state.estado_anterior is not None:
+        time.sleep(0.1)
+    st.session_state.estado_anterior = estado_sel
 
 # Filtro de distrito
 distritos_con_id = df_estado.apply(lambda row: f"{row['ID_DISTRITO']} - {row['NOMBRE_DISTRITO']}", axis=1).dropna().unique()
 distritos_opciones = ["Todos"] + sorted(distritos_con_id)
 distrito_sel = st.sidebar.selectbox("Distrito", distritos_opciones, index=0)
+
+# Verificar si cambió el distrito
+if st.session_state.distrito_anterior != distrito_sel:
+    if st.session_state.distrito_anterior is not None:
+        time.sleep(0.1)
+    st.session_state.distrito_anterior = distrito_sel
 
 if distrito_sel == "Todos":
     df_distrito = df_estado
@@ -623,15 +553,33 @@ if len(df_distrito) > 0:
     
     seccion_sel = st.sidebar.selectbox("Sección", secciones_opciones, index=0)
     
+    # Verificar si cambió la sección
+    if st.session_state.seccion_anterior != seccion_sel:
+        if st.session_state.seccion_anterior is not None:
+            time.sleep(0.1)
+        st.session_state.seccion_anterior = seccion_sel
+    
     if seccion_sel == "Todas":
         df_seccion = df_distrito
         seccion_display = "Todas las secciones"
     else:
         df_seccion = df_distrito[df_distrito["SECCION"].astype(str) == seccion_sel]
-        seccion_display = f"Sección {seccion_sel}"
+        
+        # Obtener tipos de casilla únicos para la sección seleccionada
+        if len(df_seccion) > 0 and "CASILLA" in df_seccion.columns:
+            tipos_casilla = df_seccion["CASILLA"].dropna().unique()
+            if len(tipos_casilla) > 0:
+                tipos_casilla_str = ", ".join(sorted(tipos_casilla))
+                seccion_display = f"Sección {seccion_sel} ({tipos_casilla_str})"
+            else:
+                seccion_display = f"Sección {seccion_sel}"
+        else:
+            seccion_display = f"Sección {seccion_sel}"
 else:
     df_seccion = pd.DataFrame()
     seccion_display = "No hay datos disponibles"
+
+# Reemplazar desde la línea ~700 (después del título principal) hasta donde empiezan las métricas:
 
 if len(df_seccion) > 0:
     # Título principal
@@ -693,6 +641,16 @@ if len(df_seccion) > 0:
         lista_nominal = float(lista_nominal) if lista_nominal else 0
         porcentaje_participacion = round((total_votos_coaliciones / lista_nominal) * 100, 2) if lista_nominal > 0 else 0
         
+        # Determinar ganadores
+        ganador_coalicion = ""
+        ganador_partido = ""
+        
+        if len(suma_coaliciones) > 0:
+            ganador_coalicion = suma_coaliciones.iloc[0]["Coalicion"]
+        
+        if len(suma_partidos) > 0:
+            ganador_partido = suma_partidos.iloc[0]["Partido"]
+        
         return {
             'coaliciones': suma_coaliciones,
             'partidos': suma_partidos,
@@ -700,50 +658,91 @@ if len(df_seccion) > 0:
             'num_casillas': num_casillas,
             'total_votos': total_votos_coaliciones,
             'lista_nominal': lista_nominal,
-            'porcentaje_participacion': porcentaje_participacion
+            'porcentaje_participacion': porcentaje_participacion,
+            'ganador_coalicion': ganador_coalicion,
+            'ganador_partido': ganador_partido
         }
 
-    # Procesar y mostrar resultados para cada año en orden: 2024, 2021, 2018
+    # Procesar resultados para todos los años
     resultados_por_año = {}
     
     for año in años_disponibles:
         df_año = df_seccion[df_seccion["Año"] == año]
-        
         if len(df_año) > 0:
-            st.subheader(f"🗳️ Proceso Electoral: {año}")
-            
             resultados = procesar_año(df_año, año)
             resultados_por_año[año] = resultados
+
+    # ===== SECCIÓN DE RESUMEN GENERAL =====
+    st.subheader("📈 Resumen General por Proceso Electoral")
+    
+    # Crear columnas para cada año disponible
+    if len(años_disponibles) == 3:
+        col1, col2, col3 = st.columns(3)
+        columnas = [col1, col2, col3]
+    elif len(años_disponibles) == 2:
+        col1, col2 = st.columns(2)
+        columnas = [col1, col2]
+    else:
+        col1 = st.columns(1)[0]
+        columnas = [col1]
+    
+    for i, año in enumerate(años_disponibles):
+        if año in resultados_por_año:
+            resultados = resultados_por_año[año]
             
-            # Métricas
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total de Casillas", resultados['num_casillas'])
-            with col2:
+            with columnas[i]:
+                st.markdown(f"### 🗳️ {año}")
+                
+                # Métricas principales
+                st.metric("Total de Casillas", f"{resultados['num_casillas']:,}")
                 st.metric("Lista Nominal", f"{int(resultados['lista_nominal']):,}")
-            with col3:
                 st.metric("Total de Votos", f"{int(resultados['total_votos']):,}")
-            with col4:
                 st.metric("Participación", f"{resultados['porcentaje_participacion']}%")
+                
+                # Ganadores
+                st.markdown("**🏆 Ganadores:**")
+                if resultados['ganador_coalicion']:
+                    # Obtener porcentaje del ganador por coalición
+                    if len(resultados['coaliciones']) > 0:
+                        porcentaje_ganador_coal = resultados['coaliciones'].iloc[0]['Porcentaje']
+                        st.markdown(f"**Coalición:** {resultados['ganador_coalicion']} ({porcentaje_ganador_coal}%)")
+                    else:
+                        st.markdown(f"**Coalición:** {resultados['ganador_coalicion']}")
+                
+                if resultados['ganador_partido']:
+                    # Obtener porcentaje del ganador por partido
+                    if len(resultados['partidos']) > 0:
+                        porcentaje_ganador_part = resultados['partidos'].iloc[0]['Porcentaje']
+                        st.markdown(f"**Partido:** {resultados['ganador_partido']} ({porcentaje_ganador_part}%)")
+                    else:
+                        st.markdown(f"**Partido:** {resultados['ganador_partido']}")
+
+    # ===== SECCIÓN DE TABLAS DETALLADAS =====
+    st.divider()
+    st.subheader("📋 Resultados Detallados por Proceso Electoral")
+    
+    for año in años_disponibles:
+        if año in resultados_por_año:
+            resultados = resultados_por_año[año]
+            
+            st.write(f"### 🗳️ Proceso Electoral: {año}")
             
             # Crear tabs para las diferentes tablas
             tab1, tab2, tab3 = st.tabs(["🤝 Resultados por Coalición", "🏛️ Resultados por Partido", "📋 Otros Votos"])
             
             with tab1:
-                st.write("**Análisis Electoral:** Resultados que determinan quién gana la elección (incluye candidatos independientes)")
                 if len(resultados['coaliciones']) > 0:
                     df_coaliciones_display = resultados['coaliciones'][["Coalicion", "Votos_Formatted", "Porcentaje_Formatted"]].copy()
                     df_coaliciones_display.columns = ["Coalición", "Votos", "Porcentaje"]
-                    st.dataframe(df_coaliciones_display, use_container_width=True, hide_index=True)
+                    mostrar_tabla_grande(df_coaliciones_display, ["Coalición", "Votos", "Porcentaje"])
                 else:
                     st.info("No hay coaliciones registradas para este año")
             
             with tab2:
-                st.write("**Análisis de Poder:** Fuerza real de cada partido en el distrito (incluye candidatos independientes)")
                 if len(resultados['partidos']) > 0:
                     df_partidos_display = resultados['partidos'][["Partido", "Votos_Formatted", "Porcentaje_Formatted"]].copy()
                     df_partidos_display.columns = ["Partido", "Votos", "Porcentaje"]
-                    st.dataframe(df_partidos_display, use_container_width=True, hide_index=True)
+                    mostrar_tabla_grande(df_partidos_display, ["Partido", "Votos", "Porcentaje"])
                 else:
                     st.info("No hay partidos registrados para este año")
             
@@ -752,13 +751,16 @@ if len(df_seccion) > 0:
                 if len(resultados['otros']) > 0:
                     df_otros_display = resultados['otros'][["Otros", "Votos_Formatted", "Porcentaje_Formatted"]].copy()
                     df_otros_display.columns = ["Tipo", "Votos", "Porcentaje"]
-                    st.dataframe(df_otros_display, use_container_width=True, hide_index=True)
+                    mostrar_tabla_grande(df_otros_display, ["Tipo", "Votos", "Porcentaje"])
                 else:
                     st.info("No hay otros tipos de votos registrados para este año")
             
             # Separador entre años
             if año != años_disponibles[-1]:
                 st.divider()
+
+    # ===== RESTO DEL CÓDIGO SIGUE IGUAL =====
+    # (Botones de acción, gráficos, etc.)
 
     # --- Botones de acción --- 
     st.subheader("📄 Acciones")
@@ -767,6 +769,34 @@ if len(df_seccion) > 0:
     # --- Variables de estado para gráficos ---
     if "mostrar_graficos" not in st.session_state:
         st.session_state.mostrar_graficos = False
+
+    partido_colors = {
+        "PAN": "#005DA4",
+        "PRI": "#006847",
+        "PRD": "#FFD700",
+        "MORENA": "#A01916",
+        "PT": "#FF0000",
+        "PVEM": "#006D3C",
+        "MC": "#F58025",
+        "Movimiento Ciudadano": "#F58025",
+        "NUEVA ALIANZA": "#00C0F3",
+        "Encuentro Social": "#8E44AD",
+        "Candidato Independiente": "#7F8C8D",
+        "Candidato Independiente 1": "#95A5A6",
+        "Candidato Independiente 2": "#BDC3C7",
+    }
+
+    coalicion_colors = {
+        "Coalición PAN-PRI-PRD": "PAN",
+        "Coalición PAN-PRD-MC": "PAN",
+        "Coalición PRI-PVEM-NA": "PRI",
+        "Coalición MORENA-PT-PVEM": "MORENA",
+        "Coalición MORENA-PT-PES": "MORENA",
+        "Movimiento Ciudadano": "Movimiento Ciudadano",
+        "Candidato Independiente": "Candidato Independiente",
+        "Candidato Independiente 1": "Candidato Independiente 1",
+        "Candidato Independiente 2": "Candidato Independiente 2",
+    }
     
     with col1: 
         if st.session_state.mostrar_graficos:
@@ -942,21 +972,62 @@ if len(df_seccion) > 0:
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            fig, ax = plt.subplots(figsize=(12, 8)) 
-                            ax.bar(resultados['coaliciones']["Coalicion"], resultados['coaliciones']["Votos"], color='darkblue') 
-                            plt.xticks(rotation=45, ha='right') 
-                            plt.title(f"Resultados Electorales - {año}", fontsize=14, fontweight='bold')
-                            plt.xlabel("Coalición")
-                            plt.ylabel("Número de Votos")
+                            fig, ax = plt.subplots(figsize=(16, 12))  # Más grande
+                            colors_barras = [
+                                partido_colors.get(coalicion_colors.get(c, ""), "gray")
+                                for c in resultados['coaliciones']["Coalicion"]
+                            ]
+                            bars = ax.bar(resultados['coaliciones']["Coalicion"], resultados['coaliciones']["Votos"], color=colors_barras)
+                            
+                            # Configurar texto MÁS grande
+                            ax.tick_params(axis='x', labelsize=20, rotation=45)
+                            ax.tick_params(axis='y', labelsize=20)
+                            ax.set_title(f"Resultados Electorales - {año}", fontsize=26, fontweight='bold', pad=25)
+                            ax.set_xlabel("Coalición", fontsize=22, fontweight='bold')
+                            ax.set_ylabel("Número de Votos", fontsize=22, fontweight='bold')
+                            
+                            # Agregar valores en las barras con texto más grande
+                            for bar in bars:
+                                height = bar.get_height()
+                                ax.text(bar.get_x() + bar.get_width()/2., height,
+                                       f'{int(height):,}',
+                                       ha='center', va='bottom', fontsize=18, fontweight='bold')
+                            
                             plt.tight_layout()
                             st.pyplot(fig)
                         
                         with col2:
-                            fig2, ax2 = plt.subplots(figsize=(10, 10)) 
-                            colors_pie = plt.cm.Set1(range(len(resultados['coaliciones'])))
-                            ax2.pie(resultados['coaliciones']["Votos"], labels=resultados['coaliciones']["Coalicion"], 
-                                   autopct='%1.1f%%', colors=colors_pie, startangle=90) 
-                            plt.title(f"Distribución Electoral - {año}", fontsize=14, fontweight='bold')
+                            fig2, ax2 = plt.subplots(figsize=(14, 14))  # Más grande
+                            colors_pie = [
+                                partido_colors.get(coalicion_colors.get(c, ""), "gray")
+                                for c in resultados['coaliciones']["Coalicion"]
+                            ]
+                            
+                            # Crear etiquetas más cortas para el pie
+                            labels_cortas = [label.replace("Coalición ", "").replace("Movimiento Ciudadano", "MC") 
+                                           for label in resultados['coaliciones']["Coalicion"]]
+                            
+                            wedges, texts, autotexts = ax2.pie(
+                                resultados['coaliciones']["Votos"], 
+                                labels=labels_cortas,
+                                autopct='%1.1f%%', 
+                                colors=colors_pie, 
+                                startangle=90,
+                                textprops={'fontsize': 20}  # Texto MÁS grande
+                            )
+                            
+                            # Hacer texto de porcentajes más grande y visible
+                            for autotext in autotexts:
+                                autotext.set_color('white')
+                                autotext.set_fontsize(20)
+                                autotext.set_weight('bold')
+                            
+                            # Hacer etiquetas más grandes
+                            for text in texts:
+                                text.set_fontsize(20)
+                                text.set_weight('bold')
+                            
+                            ax2.set_title(f"Distribución Electoral - {año}", fontsize=26, fontweight='bold', pad=25)
                             st.pyplot(fig2)
                     else:
                         st.info("No hay datos de coaliciones para graficar")
@@ -966,21 +1037,56 @@ if len(df_seccion) > 0:
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            fig, ax = plt.subplots(figsize=(10, 6)) 
-                            ax.bar(resultados['partidos']["Partido"], resultados['partidos']["Votos"], color='steelblue') 
-                            plt.xticks(rotation=45, ha='right') 
-                            plt.title(f"Poder por Partido - {año}", fontsize=14, fontweight='bold')
-                            plt.xlabel("Partido")
-                            plt.ylabel("Número de Votos")
+                            fig, ax = plt.subplots(figsize=(16, 12))  # Más grande
+                            colors_barras = [partido_colors.get(p, "gray") for p in resultados['partidos']["Partido"]]
+                            bars = ax.bar(resultados['partidos']["Partido"], resultados['partidos']["Votos"], color=colors_barras)
+                            
+                            # Configurar texto MÁS grande
+                            ax.tick_params(axis='x', labelsize=20, rotation=45)
+                            ax.tick_params(axis='y', labelsize=20)
+                            ax.set_title(f"Poder por Partido - {año}", fontsize=26, fontweight='bold', pad=25)
+                            ax.set_xlabel("Partido", fontsize=22, fontweight='bold')
+                            ax.set_ylabel("Número de Votos", fontsize=22, fontweight='bold')
+                            
+                            # Agregar valores en las barras con texto más grande
+                            for bar in bars:
+                                height = bar.get_height()
+                                ax.text(bar.get_x() + bar.get_width()/2., height,
+                                       f'{int(height):,}',
+                                       ha='center', va='bottom', fontsize=18, fontweight='bold')
+                            
                             plt.tight_layout()
                             st.pyplot(fig)
                         
                         with col2:
-                            fig2, ax2 = plt.subplots(figsize=(8, 8)) 
-                            colors_pie = plt.cm.Set2(range(len(resultados['partidos'])))
-                            ax2.pie(resultados['partidos']["Votos"], labels=resultados['partidos']["Partido"], 
-                                   autopct='%1.1f%%', colors=colors_pie, startangle=90) 
-                            plt.title(f"Distribución de Poder - {año}", fontsize=14, fontweight='bold')
+                            fig2, ax2 = plt.subplots(figsize=(14, 14))  # Más grande
+                            colors_pie = [partido_colors.get(c, "gray") for c in resultados['partidos']["Partido"]]
+                            
+                            # Crear etiquetas más cortas para el pie
+                            labels_cortas = [label.replace("Movimiento Ciudadano", "MC").replace("Nueva Alianza", "NA").replace("Encuentro Social", "PES") 
+                                           for label in resultados['partidos']["Partido"]]
+                            
+                            wedges, texts, autotexts = ax2.pie(
+                                resultados['partidos']["Votos"], 
+                                labels=labels_cortas, 
+                                autopct='%1.1f%%', 
+                                colors=colors_pie, 
+                                startangle=90,
+                                textprops={'fontsize': 20}  # Texto MÁS grande
+                            )
+                            
+                            # Hacer texto de porcentajes más grande y visible
+                            for autotext in autotexts:
+                                autotext.set_color('white')
+                                autotext.set_fontsize(20)
+                                autotext.set_weight('bold')
+                            
+                            # Hacer etiquetas más grandes
+                            for text in texts:
+                                text.set_fontsize(20)
+                                text.set_weight('bold')
+                            
+                            ax2.set_title(f"Distribución de Poder - {año}", fontsize=26, fontweight='bold', pad=25)
                             st.pyplot(fig2)
                     else:
                         st.info("No hay partidos para graficar")
@@ -990,21 +1096,50 @@ if len(df_seccion) > 0:
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            fig, ax = plt.subplots(figsize=(10, 6)) 
-                            ax.bar(resultados['otros']["Otros"], resultados['otros']["Votos"], color='orange') 
-                            plt.xticks(rotation=45, ha='right') 
-                            plt.title(f"Otros Votos - {año}", fontsize=14, fontweight='bold')
-                            plt.xlabel("Tipo")
-                            plt.ylabel("Número de Votos")
+                            fig, ax = plt.subplots(figsize=(14, 10))  # Más grande
+                            bars = ax.bar(resultados['otros']["Otros"], resultados['otros']["Votos"], color='orange')
+                            
+                            # Configurar texto MÁS grande
+                            ax.tick_params(axis='x', labelsize=20, rotation=45)
+                            ax.tick_params(axis='y', labelsize=20)
+                            ax.set_title(f"Otros Votos - {año}", fontsize=26, fontweight='bold', pad=25)
+                            ax.set_xlabel("Tipo", fontsize=22, fontweight='bold')
+                            ax.set_ylabel("Número de Votos", fontsize=22, fontweight='bold')
+                            
+                            # Agregar valores en las barras con texto más grande
+                            for bar in bars:
+                                height = bar.get_height()
+                                ax.text(bar.get_x() + bar.get_width()/2., height,
+                                       f'{int(height):,}',
+                                       ha='center', va='bottom', fontsize=18, fontweight='bold')
+                            
                             plt.tight_layout()
                             st.pyplot(fig)
                         
                         with col2:
-                            fig2, ax2 = plt.subplots(figsize=(8, 8)) 
+                            fig2, ax2 = plt.subplots(figsize=(12, 12))  # Más grande
                             colors_pie = plt.cm.Set3(range(len(resultados['otros'])))
-                            ax2.pie(resultados['otros']["Votos"], labels=resultados['otros']["Otros"], 
-                                   autopct='%1.1f%%', colors=colors_pie, startangle=90) 
-                            plt.title(f"Distribución Otros Votos - {año}", fontsize=14, fontweight='bold')
+                            wedges, texts, autotexts = ax2.pie(
+                                resultados['otros']["Votos"], 
+                                labels=resultados['otros']["Otros"], 
+                                autopct='%1.1f%%', 
+                                colors=colors_pie, 
+                                startangle=90,
+                                textprops={'fontsize': 20}  # Texto MÁS grande
+                            )
+                            
+                            # Hacer texto de porcentajes más grande y visible
+                            for autotext in autotexts:
+                                autotext.set_color('white')
+                                autotext.set_fontsize(20)
+                                autotext.set_weight('bold')
+                            
+                            # Hacer etiquetas más grandes
+                            for text in texts:
+                                text.set_fontsize(20)
+                                text.set_weight('bold')
+                            
+                            ax2.set_title(f"Distribución Otros Votos - {año}", fontsize=26, fontweight='bold', pad=25)
                             st.pyplot(fig2)
                     else:
                         st.info("No hay otros tipos de votos para graficar")
