@@ -716,63 +716,59 @@ if len(df_seccion) > 0:
             resultados = procesar_año(df_año, año)
             resultados_por_año[año] = resultados
 
-    # ===== SECCIÓN DE RESUMEN GENERAL =====
-    st.subheader("📈 Resumen General por Proceso Electoral")
-    
-    # Crear columnas para cada año disponible
-    if len(años_disponibles) == 3:
-        col1, col2, col3 = st.columns(3)
-        columnas = [col1, col2, col3]
-    elif len(años_disponibles) == 2:
-        col1, col2 = st.columns(2)
-        columnas = [col1, col2]
-    else:
-        col1 = st.columns(1)[0]
-        columnas = [col1]
-    
-    for i, año in enumerate(años_disponibles):
-        if año in resultados_por_año:
-            resultados = resultados_por_año[año]
-            
-            with columnas[i]:
-                st.markdown(f"### 🗳️ {año}")
-                
-                # Métricas principales
-                st.metric("Total de Casillas", f"{resultados['num_casillas']:,}")
-                st.metric("Lista Nominal", f"{int(resultados['lista_nominal']):,}")
-                st.metric("Total de Votos", f"{int(resultados['total_votos']):,}")
-                st.metric("Participación", f"{resultados['porcentaje_participacion']}%")
-                
-                # Ganadores
-                st.markdown("**🏆 Ganadores:**")
-                if resultados['ganador_coalicion']:
-                    # Obtener porcentaje del ganador por coalición
-                    if len(resultados['coaliciones']) > 0:
-                        porcentaje_ganador_coal = resultados['coaliciones'].iloc[0]['Porcentaje']
-                        st.markdown(f"**Coalición:** {resultados['ganador_coalicion']} ({porcentaje_ganador_coal}%)")
-                    else:
-                        st.markdown(f"**Coalición:** {resultados['ganador_coalicion']}")
-                
-                if resultados['ganador_partido']:
-                    # Obtener porcentaje del ganador por partido
-                    if len(resultados['partidos']) > 0:
-                        porcentaje_ganador_part = resultados['partidos'].iloc[0]['Porcentaje']
-                        st.markdown(f"**Partido:** {resultados['ganador_partido']} ({porcentaje_ganador_part}%)")
-                    else:
-                        st.markdown(f"**Partido:** {resultados['ganador_partido']}")
-
-    # ===== SECCIÓN DE TABLAS DETALLADAS =====
-    st.divider()
-    st.subheader("📋 Resultados Detallados por Proceso Electoral")
-    
+      # ===== MOSTRAR RESULTADOS POR AÑO =====
     for año in años_disponibles:
         if año in resultados_por_año:
             resultados = resultados_por_año[año]
             
-            st.write(f"### 🗳️ Proceso Electoral: {año}")
+            # Título del año
+            st.subheader(f"🗳️ Resultados {año}")
+            
+            # Resumen del año en columnas
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Total de Casillas", f"{resultados['num_casillas']:,}")
+            
+            with col2:
+                st.metric("Lista Nominal", f"{int(resultados['lista_nominal']):,}")
+            
+            with col3:
+                st.metric("Total de Votos", f"{int(resultados['total_votos']):,}")
+            
+            with col4:
+                st.metric("Participación", f"{resultados['porcentaje_participacion']}%")
+            
+            # Ganadores en dos columnas
+            col_ganador1, col_ganador2 = st.columns(2)
+            
+            with col_ganador1:
+                st.markdown("**🏆 Ganador por Coalición:**")
+                if resultados['ganador_coalicion']:
+                    if len(resultados['coaliciones']) > 0:
+                        porcentaje_ganador_coal = resultados['coaliciones'].iloc[0]['Porcentaje']
+                        st.markdown(f"**{resultados['ganador_coalicion']}** ({porcentaje_ganador_coal}%)")
+                    else:
+                        st.markdown(f"**{resultados['ganador_coalicion']}**")
+                else:
+                    st.markdown("No disponible")
+            
+            with col_ganador2:
+                st.markdown("**🏆 Ganador por Partido:**")
+                if resultados['ganador_partido']:
+                    if len(resultados['partidos']) > 0:
+                        porcentaje_ganador_part = resultados['partidos'].iloc[0]['Porcentaje']
+                        st.markdown(f"**{resultados['ganador_partido']}** ({porcentaje_ganador_part}%)")
+                    else:
+                        st.markdown(f"**{resultados['ganador_partido']}**")
+                else:
+                    st.markdown("No disponible")
+            
+            # Tablas del año inmediatamente después del resumen
+            st.markdown("### 📋 Tablas Detalladas")
             
             # Crear tabs para las diferentes tablas
-            tab1, tab2, tab3 = st.tabs(["🤝 Resultados por Coalición", "🏛️ Resultados por Partido", "📋 Otros Votos"])
+            tab1, tab2, tab3 = st.tabs(["🤝 Coaliciones", "🏛️ Partidos", "📋 Otros Votos"])
             
             with tab1:
                 if len(resultados['coaliciones']) > 0:
@@ -799,12 +795,9 @@ if len(df_seccion) > 0:
                 else:
                     st.info("No hay otros tipos de votos registrados para este año")
             
-            # Separador entre años
+            # Separador entre años (excepto el último)
             if año != años_disponibles[-1]:
                 st.divider()
-
-    # ===== RESTO DEL CÓDIGO SIGUE IGUAL =====
-    # (Botones de acción, gráficos, etc.)
 
     # --- Botones de acción --- 
     st.subheader("📄 Acciones")
