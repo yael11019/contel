@@ -619,7 +619,7 @@ if distrito_sel != "Todos":
                     tipos_casilla = df_seccion[tipo_col].dropna().unique()
                     if len(tipos_casilla) > 0:
                         tipos_casilla_str = ", ".join(sorted(tipos_casilla))
-                        seccion_display = f"Sección {seccion_sel} ({tipos_casilla_str})"
+                        seccion_display = f"Sección {seccion_sel}"
                     else:
                         seccion_display = f"Sección {seccion_sel}"
                 else:
@@ -908,8 +908,8 @@ if len(df_seccion) > 0:
                         doc = SimpleDocTemplate(buffer, topMargin=0.5*inch, bottomMargin=0.5*inch)
                         styles = getSampleStyleSheet()
                         story = []
-                        story.append(Paragraph("Resultados Electorales", styles["Title"]))
-                        story.append(Spacer(1, 0.3*inch))
+                        story.append(Paragraph("Resultados Electorales", styles["Heading2"]))
+                        story.append(Spacer(1, 0.05*inch))
                         story.append(Paragraph(f"<b>Estado:</b> {estado_sel}", styles["Normal"]))
                         story.append(Spacer(1, 0.1*inch))
                         story.append(Paragraph(f"<b>Distrito:</b> {distrito_display}", styles["Normal"]))
@@ -921,10 +921,9 @@ if len(df_seccion) > 0:
                         años_ordenados = sorted(resultados_por_año.keys(), reverse=True)
                         for i, año in enumerate(años_ordenados):
                             resultados = resultados_por_año[año]
-                            story.append(Paragraph(f"Proceso Electoral: {año}", styles["Heading1"]))
-                            story.append(Spacer(1, 0.05*inch))
+                            story.append(Paragraph(f"Proceso Electoral: {año}", styles["Heading3"]))
                             if len(resultados['coaliciones']) > 0:
-                                story.append(Paragraph("Resultados por Coalición", styles["Heading2"]))
+                                story.append(Paragraph("Resultados por Coalición", styles["Heading3"]))
                                 story.append(Spacer(1, 0.05*inch))
                                 df_coaliciones_display = resultados['coaliciones'][["Coalicion", "Votos_Formatted", "Porcentaje_Formatted"]].copy()
                                 df_coaliciones_display.columns = ["Coalición", "Votos", "Porcentaje"]
@@ -948,7 +947,7 @@ if len(df_seccion) > 0:
                                 story.append(table)
                                 story.append(Spacer(1, 0.05*inch))
                             if len(resultados['partidos']) > 0:
-                                story.append(Paragraph("Resultados por Partido Individual", styles["Heading2"]))
+                                story.append(Paragraph("Resultados por Partido Individual", styles["Heading3"]))
                                 story.append(Spacer(1, 0.05*inch))
                                 df_partidos_display = resultados['partidos'][["Partido", "Votos_Formatted", "Porcentaje_Formatted"]].copy()
                                 df_partidos_display.columns = ["Partido", "Votos", "Porcentaje"]
@@ -972,7 +971,7 @@ if len(df_seccion) > 0:
                                 story.append(table)
                                 story.append(Spacer(1, 0.05*inch))
                             if len(resultados['otros']) > 0:
-                                story.append(Paragraph("Otros Votos", styles["Heading2"]))
+                                story.append(Paragraph("Otros Votos", styles["Heading3"]))
                                 story.append(Spacer(1, 0.05*inch))
                                 df_otros_display = resultados['otros'][["Otros", "Votos_Formatted", "Porcentaje_Formatted"]].copy()
                                 df_otros_display.columns = ["Tipo", "Votos", "Porcentaje"]
