@@ -149,9 +149,9 @@ def load_data():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     archivos = [
-        ("votaciones2018_con_municipio.csv", 2018),
-        ("votaciones2021_con_municipio.csv", 2021),
-        ("votaciones2024_con_municipio.csv", 2024)
+        ("votaciones2018_con_municipio_limpio.csv", 2018),
+        ("votaciones2021_con_municipio_limpio.csv", 2021),
+        ("votaciones2024_con_municipio_limpio.csv", 2024)
     ]
     dfs = []
     archivos_cargados = []
@@ -1167,3 +1167,24 @@ else:
     st.write(f"Sección seleccionada: {seccion_sel}")
     if len(df_distrito) > 0:
         st.write(f"Secciones disponibles: {sorted(df_distrito['SECCION'].unique())}")
+
+# --- Utilidad para sumar votos totales de un municipio y año evitando doble conteo ---
+def total_votos_municipio(df, municipio, año):
+    df_filtrado = df[(df["MUNICIPIO"] == municipio) & (df["Año"] == año)]
+    cols_coalicion = [
+        "PAN_PRI_PRD", "PAN_PRI", "PAN_PRD", "PRI_PRD",
+        "PVEM_PT_MORENA", "PVEM_PT", "PVEM_MORENA", "PT_MORENA"
+    ]
+    cols_partidos = ["PAN", "PRI", "PRD", "PVEM", "PT", "MC", "MORENA"]
+    cols_presentes = [col for col in cols_coalicion if col in df_filtrado.columns]
+    # Si hay votos en columnas de coalición, sumar solo esas
+    if cols_presentes and df_filtrado[cols_presentes].sum().sum() > 0:
+        total = df_filtrado[cols_presentes].sum().sum()
+    else:
+        cols_presentes = [col for col in cols_partidos if col in df_filtrado.columns]
+        total = df_filtrado[cols_presentes].sum().sum()
+    return total
+
+# Ejemplo de uso (puedes ponerlo donde quieras mostrar el total):
+# total = total_votos_municipio(df, "URUAPAN DEL PROGRESO", 2024)
+# st.write(f"Total votos Uruapan del Progreso 2024: {total}")
